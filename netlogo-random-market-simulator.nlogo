@@ -60,8 +60,9 @@ to do-plots
   set-current-plot-pen "watched-score"
   plot [score] of watched-trader
   set-current-plot-pen "median-score"
+  plot median [score] of traders
+  set-current-plot-pen "mean-score"
   plot mean [score] of traders
-
 end
 
 ;; trade == [ sender receiver item-sent # item-received # ]
@@ -159,10 +160,10 @@ to-report ai-double-benefit-trades [trade]
     let partner ifelse-value (sender?) [ receiver ] [ sender ]
     ifelse sender? [
       set my-score do-local-score (delta-good (delta-good inventory item-received (item-received-amt)) item-sent (- item-sent-amt))
-      set yr-score do-local-score (delta-good (delta-good ([inventory] of partner) item-received (- item-received-amt)) item-sent (item-sent-amt))
+      set yr-score [do-local-score (delta-good (delta-good inventory item-received (- item-received-amt)) item-sent (item-sent-amt))] of partner
     ] [
       set my-score do-local-score (delta-good (delta-good inventory item-received (- item-received-amt)) item-sent (item-sent-amt))
-      set yr-score do-local-score (delta-good (delta-good ([inventory] of partner) item-received (item-received-amt)) item-sent (- item-sent-amt))
+      set yr-score [do-local-score (delta-good (delta-good inventory item-received (item-received-amt)) item-sent (- item-sent-amt))] of partner
     ]
     report ((my-score > score) and (yr-score > ([score] of partner)))
   ]
@@ -396,7 +397,18 @@ true
 "" ""
 PENS
 "watched-score" 1.0 0 -2674135 true "" ""
-"median-score" 1.0 0 -16777216 true "" ""
+"median-score" 1.0 0 -15456499 true "" ""
+"mean-score" 1.0 0 -13628663 true "" ""
+
+TEXTBOX
+390
+625
+725
+685
+grey = attempted trade\nred = unsuccessful trade\ngreen = successful trade
+12
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
