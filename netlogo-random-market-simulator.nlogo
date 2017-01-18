@@ -1,6 +1,6 @@
 breed [ traders trader ]
 
-globals [ base-names inventory-names global-inventory ]
+globals [ base-names inventory-names global-inventory watched-trader]
 traders-own [ current-trades inventory score factory event-modifiers ]
 
 
@@ -26,7 +26,7 @@ to setup-metal-plots
 end
 
 to setup-traders
-set-default-shape traders "person"
+  set-default-shape traders "person"
   create-traders number-of-traders [
     set inventory n-values number-of-goods [ random 100 ]
     set event-modifiers n-values number-of-goods [1.0]
@@ -35,25 +35,27 @@ set-default-shape traders "person"
     set ycor random world-height
     set current-trades []
   ]
-
+  set watched-trader one-of traders
 end
 
 
 to do-plots
-  set-current-plot "metal-inventories"
   foreach inventory-names [ [a-good] ->
-    set-current-plot-pen a-good
     let good-id (position a-good inventory-names)
+
+    set-current-plot "metal-inventories"
+    set-current-plot-pen a-good
     plot mean [ item good-id inventory ] of traders
-  ]
-set-current-plot "metal-values"
-  foreach inventory-names [ [a-good] ->
+
+    set-current-plot "metal-values"
     set-current-plot-pen a-good
-    let good-id (position a-good inventory-names)
-    plot [ item good-id inventory ] of trader 0
+    plot [ item good-id inventory ] of watched-trader
   ]
+
+  ;; resetting plot for clarity
+  set-current-plot "metal-values"
   set-current-plot-pen "total"
-  plot [score] of trader 0
+  plot [score] of watched-trader
 end
 
 ;; trade == [ sender receiver item-sent # item-received # ]
@@ -100,8 +102,12 @@ end
 to process-top-trade
   if not empty? current-trades [
     let trade first current-trades
-    if valid-trade? trade [
+    ifelse valid-trade? trade [
       execute-trade trade
+      set pcolor green
+    ]
+    [
+      set pcolor red
     ]
     set current-trades but-first current-trades
   ]
@@ -151,6 +157,8 @@ to do-trades
     [
       set pcolor black
     ]
+  ]
+  ask traders [
     process-top-trade
   ]
 end
@@ -188,13 +196,13 @@ to go
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-440
+380
 10
-909
-480
+989
+620
 -1
 -1
-13.97
+18.21212121212121
 1
 10
 1
@@ -208,17 +216,17 @@ GRAPHICS-WINDOW
 16
 -16
 16
-0
-0
+1
+1
 1
 ticks
 30.0
 
 BUTTON
 15
-75
+88
 186
-108
+148
 NIL
 setup
 NIL
@@ -232,9 +240,9 @@ NIL
 1
 
 BUTTON
-15
-115
-185
+200
+88
+370
 148
 NIL
 go
@@ -249,10 +257,10 @@ NIL
 1
 
 SLIDER
-15
-35
-187
-68
+195
+10
+367
+43
 number-of-goods
 number-of-goods
 2
@@ -266,7 +274,7 @@ HORIZONTAL
 PLOT
 15
 155
-432
+370
 397
 metal-values
 NIL
@@ -283,7 +291,7 @@ PENS
 PLOT
 16
 404
-434
+371
 620
 metal-inventories
 NIL
@@ -293,15 +301,15 @@ NIL
 0.0
 10.0
 true
-false
+true
 "" ""
 PENS
 
 SLIDER
-190
-35
-362
-68
+15
+10
+187
+43
 number-of-traders
 number-of-traders
 5
