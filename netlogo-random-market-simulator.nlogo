@@ -1,7 +1,8 @@
 breed [ traders trader ]
 
 globals [ base-names inventory-names global-inventory watched-trader]
-traders-own [ current-trades inventory score factory event-modifiers ]
+traders-own [ current-trades inventory score factory event-modifiers good-trade-send? good-trade-receive? ]
+;; good-trade? is the "ai" - how a trader decides whether to trade or not
 
 
 to setup
@@ -14,7 +15,7 @@ to setup
 end
 
 to setup-metal-plots
-  foreach ["metal-values" "metal-inventories"] [[a-plot] ->
+  foreach ["watched-inventory" "median-inventory"] [[a-plot] ->
     set-current-plot a-plot
     create-temporary-plot-pen "total"
     foreach inventory-names [ [a-good] ->
@@ -34,8 +35,14 @@ to setup-traders
     set xcor random world-width
     set ycor random world-height
     set current-trades []
+    set good-trade-send? [[x] -> ai-all-trades true x]
+    set good-trade-receive? [[x] -> ai-all-trades false x]
   ]
   set watched-trader one-of traders
+  ask watched-trader [
+    set good-trade-send? [[x] -> ai-good-trades true x]
+    set good-trade-receive? [[x] -> ai-good-trades false x]
+  ]
 end
 
 
@@ -43,17 +50,17 @@ to do-plots
   foreach inventory-names [ [a-good] ->
     let good-id (position a-good inventory-names)
 
-    set-current-plot "metal-inventories"
+    set-current-plot "median-inventory"
     set-current-plot-pen a-good
-    plot mean [ item good-id inventory ] of traders
+    plot median [ item good-id inventory ] of traders
 
-    set-current-plot "metal-values"
+    set-current-plot "watched-inventory"
     set-current-plot-pen a-good
     plot [ item good-id inventory ] of watched-trader
   ]
 
   ;; resetting plot for clarity
-  set-current-plot "metal-values"
+  set-current-plot "watched-inventory"
   set-current-plot-pen "total"
   plot [score] of watched-trader
 end
@@ -102,7 +109,7 @@ end
 to process-top-trade
   if not empty? current-trades [
     let trade first current-trades
-    ifelse valid-trade? trade [
+    ifelse (runresult good-trade-receive? trade) [
       execute-trade trade
       set pcolor green
     ]
@@ -114,24 +121,41 @@ to process-top-trade
 end
 
 
-;; TODO
-to ai-max-trades
+;; TODO break this out into send & receive
+to-report ai-all-trades [sender? trade]
+  if (valid-trade? trade) [
+    report true
+  ]
+  report false
 end
 
 ;; TODO
-to ai-min-trades
+to-report ai-only-great-trades [sender? trade]
+end
+
+to-report delta-good [an-inventory good-name delta]
+  let good-id (position good-name inventory-names)
+  report replace-item good-id an-inventory (delta + item good-id an-inventory)
 end
 
 ;; TODO
-to ai-local-positive-trades
-end
-
-;; TODO
-to ai-global-positive-trades
-end
-
-;; TODO
-to ai-maximize-event
+to-report ai-good-trades [sender? trade]
+  if (valid-trade? trade) [
+      let sender item 0 trade
+      let receiver item 1 trade
+      let item-sent item 2 trade
+      let item-sent-amt item 3 trade
+      let item-received item 4 trade
+      let item-received-amt item 5 trade
+      let new-score 0
+      ifelse sender? [
+        set new-score do-local-score (delta-good (delta-good inventory item-received (item-received-amt)) item-sent (- item-sent-amt))
+      ] [
+        set new-score do-local-score (delta-good (delta-good inventory item-received (- item-received-amt)) item-sent (item-sent-amt))
+      ]
+      report (new-score > score)
+  ]
+  report false
 end
 
 ;; TODO
@@ -142,54 +166,52 @@ to-report inventory-raw-prices
 end
 
 to do-score
-  ask traders [
-    set score reduce + (map * inventory-raw-prices event-modifiers)
-  ]
+  set score do-local-score inventory
 end
 
-to do-trades
-  ask traders [
-    let patch-mates other traders-here
-    ifelse any? patch-mates [
-      set pcolor grey
-      if empty? current-trades [ send-trade-request one-of patch-mates ]
-    ]
-    [
-      set pcolor black
-    ]
+to-report do-local-score [ an-inventory ]
+  report reduce + (map * an-inventory event-modifiers)
+end
+
+to send-trade
+  let patch-mates other traders-here
+  ifelse any? patch-mates [
+    set pcolor grey
+    if empty? current-trades [ send-trade-request one-of patch-mates ]
   ]
-  ask traders [
-    process-top-trade
+  [
+    set pcolor black
   ]
 end
 
 to do-wander
-  ask traders [
-    fd random 3
-    rt (45 - random 90)
-  ]
+  fd random 3
+  rt (45 - random 90)
 end
 
 to do-factory
-  ask traders [
     set inventory replace-item factory inventory (min (list 100 (1 + item factory inventory)))
-  ]
 end
 
 to do-event
-  ask traders [
-    set event-modifiers n-values number-of-goods [max (list 0.1 random-normal 1.0 0.1) ]
-  ]
+    set event-modifiers n-values number-of-goods [max (list 0.1 random-normal 1.0 0.25) ]
 end
 
 to go
-  do-wander
+  ; wandering always separate/first
+  ask traders [
+    do-wander
+  ]
 
   set global-inventory  map [[i] -> reduce + [item i inventory] of traders] n-values number-of-goods [[i] -> i]
-  if ticks mod 1000 = 0 [ do-event ]
-  do-factory
-  do-trades
-  do-score
+
+  ask traders [
+     if ticks mod 1000 = 0 [ do-event ]
+     do-factory
+     send-trade
+     process-top-trade
+     do-score
+  ]
   do-plots
 
   tick
@@ -224,9 +246,9 @@ ticks
 
 BUTTON
 15
-88
+50
 186
-148
+110
 NIL
 setup
 NIL
@@ -241,9 +263,9 @@ NIL
 
 BUTTON
 200
-88
+50
 370
-148
+110
 NIL
 go
 T
@@ -273,27 +295,10 @@ HORIZONTAL
 
 PLOT
 15
-155
+120
 370
-397
-metal-values
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-
-PLOT
-16
-404
-371
-620
-metal-inventories
+305
+median-inventory
 NIL
 NIL
 0.0
@@ -319,6 +324,23 @@ number-of-traders
 1
 NIL
 HORIZONTAL
+
+PLOT
+15
+315
+370
+485
+watched-inventory
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
 
 @#$#@#$#@
 ## WHAT IS IT?
