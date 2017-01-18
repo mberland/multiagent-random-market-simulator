@@ -1,5 +1,5 @@
-globals [ base-names inventory-names current-trades global-inventory ]
-turtles-own [ inventory score factory event-modifiers ]
+globals [ base-names inventory-names global-inventory ]
+turtles-own [ current-trades inventory score factory event-modifiers ]
 
 to setup
   ca
@@ -93,9 +93,37 @@ to process-top-trade
   ]
 end
 
+
+;; TODO
+to ai-max-trades
+end
+
+;; TODO
+to ai-min-trades
+end
+
+;; TODO
+to ai-local-positive-trades
+end
+
+;; TODO
+to ai-global-positive-trades
+end
+
+;; TODO
+to ai-maximize-event
+end
+
+;; TODO
+to-report inventory-raw-prices
+  report inventory
+  ;; should be a function of what it last traded at the global market rate ...
+  ;; should be a low-sell / high-buy global rate
+end
+
 to do-score
   ask turtles [
-    set score reduce + (map * inventory event-modifiers)
+    set score reduce + (map * inventory-raw-prices event-modifiers)
   ]
 end
 
@@ -213,7 +241,7 @@ number-of-goods
 number-of-goods
 2
 8
-6.0
+4.0
 1
 1
 NIL
