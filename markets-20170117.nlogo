@@ -94,7 +94,9 @@ to process-top-trade
 end
 
 to do-score
-
+  ask turtles [
+    set score reduce + (map * inventory event-modifiers)
+  ]
 end
 
 to do-trades
