@@ -1,11 +1,19 @@
+breed [ traders trader ]
+
 globals [ base-names inventory-names global-inventory ]
-turtles-own [ current-trades inventory score factory event-modifiers ]
+traders-own [ current-trades inventory score factory event-modifiers ]
+
 
 to setup
   ca
   reset-ticks
   set base-names [ "iron" "silver" "gold" "ruby" "pearl" "sapphire" "copper" "bronze" "cats" ]
   set inventory-names n-of number-of-goods base-names
+  setup-metal-plots
+  setup-traders
+end
+
+to setup-metal-plots
   foreach ["metal-values" "metal-inventories"] [[a-plot] ->
     set-current-plot a-plot
     create-temporary-plot-pen "total"
@@ -15,7 +23,11 @@ to setup
      set-plot-pen-color item (position a-good base-names) base-colors
    ]
   ]
-  crt number-of-traders [
+end
+
+to setup-traders
+set-default-shape traders "person"
+  create-traders number-of-traders [
     set inventory n-values number-of-goods [ random 100 ]
     set event-modifiers n-values number-of-goods [1.0]
     set factory who mod (number-of-goods / 2)
@@ -23,23 +35,25 @@ to setup
     set ycor random world-height
     set current-trades []
   ]
+
 end
+
 
 to do-plots
   set-current-plot "metal-inventories"
   foreach inventory-names [ [a-good] ->
     set-current-plot-pen a-good
     let good-id (position a-good inventory-names)
-    plot mean [ item good-id inventory ] of turtles
+    plot mean [ item good-id inventory ] of traders
   ]
 set-current-plot "metal-values"
   foreach inventory-names [ [a-good] ->
     set-current-plot-pen a-good
     let good-id (position a-good inventory-names)
-    plot [ item good-id inventory ] of turtle 0
+    plot [ item good-id inventory ] of trader 0
   ]
   set-current-plot-pen "total"
-  plot [score] of turtle 0
+  plot [score] of trader 0
 end
 
 ;; trade == [ sender receiver item-sent # item-received # ]
@@ -47,11 +61,11 @@ to send-trade-request [ partner ]
   ask partner [ set current-trades fput (list myself self (one-of inventory-names) (random 10) (one-of inventory-names) (random 10)) current-trades ]
 end
 
-to-report inv [item-name] ;;turtle
+to-report inv [item-name] ;;trader
   report item (position item-name inventory-names) inventory
 end
 
-to mod-inventory [item-name delta] ;; turtle
+to mod-inventory [item-name delta] ;; trader
   set inventory replace-item (position item-name inventory-names) inventory (delta + inv item-name)
 end
 
@@ -122,14 +136,14 @@ to-report inventory-raw-prices
 end
 
 to do-score
-  ask turtles [
+  ask traders [
     set score reduce + (map * inventory-raw-prices event-modifiers)
   ]
 end
 
 to do-trades
-  ask turtles [
-    let patch-mates other turtles-here
+  ask traders [
+    let patch-mates other traders-here
     ifelse any? patch-mates [
       set pcolor grey
       if empty? current-trades [ send-trade-request one-of patch-mates ]
@@ -142,32 +156,34 @@ to do-trades
 end
 
 to do-wander
-  ask turtles [
+  ask traders [
     fd random 3
     rt (45 - random 90)
   ]
 end
 
 to do-factory
-  ask turtles [
+  ask traders [
     set inventory replace-item factory inventory (min (list 100 (1 + item factory inventory)))
   ]
 end
 
 to do-event
-  ask turtles [
+  ask traders [
     set event-modifiers n-values number-of-goods [max (list 0.1 random-normal 1.0 0.1) ]
   ]
 end
 
 to go
-  set global-inventory  map [[i] -> reduce + [item i inventory] of turtles] n-values number-of-goods [[i] -> i]
+  do-wander
+
+  set global-inventory  map [[i] -> reduce + [item i inventory] of traders] n-values number-of-goods [[i] -> i]
   if ticks mod 1000 = 0 [ do-event ]
   do-factory
-  do-wander
   do-trades
   do-score
   do-plots
+
   tick
 end
 @#$#@#$#@
