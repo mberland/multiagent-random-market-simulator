@@ -1,7 +1,7 @@
 breed [ traders trader ]
 
 globals [ base-names inventory-names global-inventory watched-trader]
-traders-own [ current-trades inventory score factory event-modifiers good-trade-send? good-trade-receive? ]
+traders-own [ current-trades inventory score factory event-modifiers good-trade? ]
 ;; good-trade? is the "ai" - how a trader decides whether to trade or not
 
 
@@ -34,13 +34,11 @@ to setup-traders
     set xcor random world-width
     set ycor random world-height
     set current-trades []
-    set good-trade-send? [[x] -> ai-all-trades x]
-    set good-trade-receive? [[x] -> ai-all-trades x]
+    set good-trade? [[x] -> ai-all-trades x]
   ]
   set watched-trader one-of traders
   ask watched-trader [
-    set good-trade-send? [[x] -> ai-good-trades  x]
-    set good-trade-receive? [[x] -> ai-good-trades  x]
+    set good-trade? [[x] -> ai-good-trades  x]
   ]
 end
 
@@ -71,7 +69,7 @@ to send-trade-request [ partner ]
   let is-trade-possible? true
   let MAX-TRIES 100
   let possible-trade (list self partner (one-of inventory-names) (random 10) (one-of inventory-names) (random 10))
-  while [((not (runresult good-trade-send? possible-trade)) or (not valid-trade? possible-trade)) and is-trade-possible?]
+  while [((not (runresult good-trade? possible-trade)) or (not valid-trade? possible-trade)) and is-trade-possible?]
   [
     set possible-trade (list self partner (one-of inventory-names) (random 10) (one-of inventory-names) (random 10))
     set MAX-TRIES (MAX-TRIES - 1)
@@ -126,7 +124,7 @@ end
 to process-top-trade
   if not empty? current-trades [
     let trade first current-trades
-    ifelse (runresult good-trade-receive? trade) [
+    ifelse (runresult good-trade? trade) [
       execute-trade trade
       set pcolor green
     ]
