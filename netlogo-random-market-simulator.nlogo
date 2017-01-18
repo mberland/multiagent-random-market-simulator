@@ -17,7 +17,6 @@ end
 to setup-metal-plots
   foreach ["watched-inventory" "median-inventory"] [[a-plot] ->
     set-current-plot a-plot
-    create-temporary-plot-pen "total"
     foreach inventory-names [ [a-good] ->
      create-temporary-plot-pen a-good
      set-current-plot-pen a-good
@@ -35,13 +34,13 @@ to setup-traders
     set xcor random world-width
     set ycor random world-height
     set current-trades []
-    set good-trade-send? [[x] -> ai-all-trades true x]
-    set good-trade-receive? [[x] -> ai-all-trades false x]
+    set good-trade-send? [[x] -> ai-all-trades x]
+    set good-trade-receive? [[x] -> ai-all-trades x]
   ]
   set watched-trader one-of traders
   ask watched-trader [
-    set good-trade-send? [[x] -> ai-good-trades true x]
-    set good-trade-receive? [[x] -> ai-good-trades false x]
+    set good-trade-send? [[x] -> ai-good-trades  x]
+    set good-trade-receive? [[x] -> ai-good-trades  x]
   ]
 end
 
@@ -59,15 +58,33 @@ to do-plots
     plot [ item good-id inventory ] of watched-trader
   ]
 
-  ;; resetting plot for clarity
-  set-current-plot "watched-inventory"
-  set-current-plot-pen "total"
+  set-current-plot "scores"
+  set-current-plot-pen "watched-score"
   plot [score] of watched-trader
+  set-current-plot-pen "median-score"
+  plot mean [score] of traders
+
 end
 
 ;; trade == [ sender receiver item-sent # item-received # ]
 to send-trade-request [ partner ]
-  ask partner [ set current-trades fput (list myself self (one-of inventory-names) (random 10) (one-of inventory-names) (random 10)) current-trades ]
+  let is-trade-possible? true
+  let MAX-TRIES 100
+  let possible-trade (list self partner (one-of inventory-names) (random 10) (one-of inventory-names) (random 10))
+  while [((not (runresult good-trade-send? possible-trade)) or (not valid-trade? possible-trade)) and is-trade-possible?]
+  [
+    set possible-trade (list self partner (one-of inventory-names) (random 10) (one-of inventory-names) (random 10))
+    set MAX-TRIES (MAX-TRIES - 1)
+    if (MAX-TRIES < 1) [ set is-trade-possible? false ]
+  ]
+  if is-trade-possible?
+  [
+    ask partner [
+      if valid-trade? possible-trade [
+        set current-trades fput possible-trade current-trades
+      ]
+    ]
+  ]
 end
 
 to-report inv [item-name] ;;trader
@@ -122,7 +139,7 @@ end
 
 
 ;; TODO break this out into send & receive
-to-report ai-all-trades [sender? trade]
+to-report ai-all-trades [trade]
   if (valid-trade? trade) [
     report true
   ]
@@ -130,7 +147,7 @@ to-report ai-all-trades [sender? trade]
 end
 
 ;; TODO
-to-report ai-only-great-trades [sender? trade]
+to-report ai-only-great-trades [trade]
 end
 
 to-report delta-good [an-inventory good-name delta]
@@ -139,7 +156,7 @@ to-report delta-good [an-inventory good-name delta]
 end
 
 ;; TODO
-to-report ai-good-trades [sender? trade]
+to-report ai-good-trades [trade]
   if (valid-trade? trade) [
       let sender item 0 trade
       let receiver item 1 trade
@@ -148,6 +165,7 @@ to-report ai-good-trades [sender? trade]
       let item-received item 4 trade
       let item-received-amt item 5 trade
       let new-score 0
+      let sender? (self = sender)
       ifelse sender? [
         set new-score do-local-score (delta-good (delta-good inventory item-received (item-received-amt)) item-sent (- item-sent-amt))
       ] [
@@ -206,7 +224,7 @@ to go
   set global-inventory  map [[i] -> reduce + [item i inventory] of traders] n-values number-of-goods [[i] -> i]
 
   ask traders [
-     if ticks mod 1000 = 0 [ do-event ]
+     if ticks mod 5000 = 0 [ do-event ]
      do-factory
      send-trade
      process-top-trade
@@ -341,6 +359,25 @@ true
 true
 "" ""
 PENS
+
+PLOT
+15
+490
+370
+640
+scores
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"watched-score" 1.0 0 -2674135 true "" ""
+"median-score" 1.0 0 -16777216 true "" ""
 
 @#$#@#$#@
 ## WHAT IS IT?
