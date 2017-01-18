@@ -34,7 +34,7 @@ to setup-traders
     set xcor random world-width
     set ycor random world-height
     set current-trades []
-    set good-trade? [[x] -> ai-all-trades x]
+    set good-trade? one-of (list [[x] -> ai-all-trades x] [[x] -> ai-single-benefit-trades x] [[x] -> ai-double-benefit-trades x])
   ]
   set watched-trader one-of traders
   ask watched-trader [
