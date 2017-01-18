@@ -38,7 +38,7 @@ to setup-traders
   ]
   set watched-trader one-of traders
   ask watched-trader [
-    set good-trade? [[x] -> ai-good-trades  x]
+    set good-trade? [[x] -> ai-single-benefit-trades  x]
   ]
 end
 
@@ -145,7 +145,7 @@ to-report ai-all-trades [trade]
 end
 
 ;; TODO
-to-report ai-only-great-trades [trade]
+to-report ai-double-benefit-trades [trade]
 end
 
 to-report delta-good [an-inventory good-name delta]
@@ -154,7 +154,7 @@ to-report delta-good [an-inventory good-name delta]
 end
 
 ;; TODO
-to-report ai-good-trades [trade]
+to-report ai-single-benefit-trades [trade]
   if (valid-trade? trade) [
       let sender item 0 trade
       let receiver item 1 trade
