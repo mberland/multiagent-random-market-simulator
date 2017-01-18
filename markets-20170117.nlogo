@@ -1,9 +1,9 @@
-
-globals [ base-names inventory-names current-trades ]
-turtles-own [ inventory score factory ]
+globals [ base-names inventory-names current-trades global-inventory ]
+turtles-own [ inventory score factory event-modifiers ]
 
 to setup
   ca
+  reset-ticks
   set base-names [ "iron" "silver" "gold" "ruby" "pearl" "sapphire" "copper" "bronze" "cats" ]
   set inventory-names n-of number-of-goods base-names
   foreach ["metal-values" "metal-inventories"] [[a-plot] ->
@@ -17,7 +17,8 @@ to setup
   ]
   crt number-of-traders [
     set inventory n-values number-of-goods [ random 100 ]
-    set factory who mod number-of-goods
+    set event-modifiers n-values number-of-goods [1.0]
+    set factory who mod (number-of-goods / 2)
     set xcor random world-width
     set ycor random world-height
     set current-trades []
@@ -37,6 +38,8 @@ set-current-plot "metal-values"
     let good-id (position a-good inventory-names)
     plot [ item good-id inventory ] of turtle 0
   ]
+  set-current-plot-pen "total"
+  plot [score] of turtle 0
 end
 
 ;; trade == [ sender receiver item-sent # item-received # ]
@@ -121,12 +124,21 @@ to do-factory
   ]
 end
 
+to do-event
+  ask turtles [
+    set event-modifiers n-values number-of-goods [max (list 0.1 random-normal 1.0 0.1) ]
+  ]
+end
+
 to go
+  set global-inventory  map [[i] -> reduce + [item i inventory] of turtles] n-values number-of-goods [[i] -> i]
+  if ticks mod 1000 = 0 [ do-event ]
   do-factory
   do-wander
   do-trades
   do-score
   do-plots
+  tick
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
