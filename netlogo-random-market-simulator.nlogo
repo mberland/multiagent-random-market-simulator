@@ -146,6 +146,27 @@ end
 
 ;; TODO
 to-report ai-double-benefit-trades [trade]
+  if (valid-trade? trade) [
+    let sender item 0 trade
+    let receiver item 1 trade
+    let item-sent item 2 trade
+    let item-sent-amt item 3 trade
+    let item-received item 4 trade
+    let item-received-amt item 5 trade
+    let my-score 0
+    let yr-score 0
+    let sender? (self = sender)
+    let partner ifelse-value (sender?) [ receiver ] [ sender ]
+    ifelse sender? [
+      set my-score do-local-score (delta-good (delta-good inventory item-received (item-received-amt)) item-sent (- item-sent-amt))
+      set yr-score do-local-score (delta-good (delta-good ([inventory] of partner) item-received (- item-received-amt)) item-sent (item-sent-amt))
+    ] [
+      set my-score do-local-score (delta-good (delta-good inventory item-received (- item-received-amt)) item-sent (item-sent-amt))
+      set yr-score do-local-score (delta-good (delta-good ([inventory] of partner) item-received (item-received-amt)) item-sent (- item-sent-amt))
+    ]
+    report ((my-score > score) and (yr-score > ([score] of partner)))
+  ]
+  report false
 end
 
 to-report delta-good [an-inventory good-name delta]
